@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 
-	jwt "github.com/golang-jwt/jwt"
+	jose "github.com/go-jose/go-jose/v4"
+
+	jwt "github.com/golang-jwt/jwt/v5"
 )
 
 const (
@@ -47,11 +49,25 @@ rQIDAQAB
 )
 
 func main() {
+	rsaPubPem, err := jwt.ParseRSAPublicKeyFromPEM([]byte(pemPub))
+	if err != nil {
+		panic(err)
+	}
 	token, err := jwt.ParseWithClaims(jwtStr, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return jwt.ParseRSAPublicKeyFromPEM([]byte(pemPub))
+		return rsaPubPem, nil
 	})
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%+v\n", token)
+	fmt.Printf("[*] Verified with RSA public key PEM: %+v\n", token)
+
+	jwk := jose.JSONWebKey{}
+	jwk.UnmarshalJSON([]byte(jwkPub))
+	token, err = jwt.ParseWithClaims(jwtStr, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return jwk.Key, nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("[*] Verified with RSA JWK: %+v\n", token)
 }
